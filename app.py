@@ -1,291 +1,427 @@
 import streamlit as st
 import pandas as pd
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
-import numpy as np
+import plotly.graph_objects as go
+import plotly.express as px
 
+# ── Page config ──────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="Smurfit Westrock ESG Dashboard",
+    page_title="Smurfit Westrock ESG Performance Dashboard",
     page_icon="🌿",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
 
+# ── Custom CSS ───────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
-.stApp { background-color: #F0F4F8; }
-.dashboard-header {
-    background: linear-gradient(135deg, #0D1B2A 0%, #1B3A5C 100%);
-    border-radius: 12px; padding: 24px 32px; margin-bottom: 20px;
-    display: flex; justify-content: space-between; align-items: center;
-}
-.header-left h1 { color: #FFFFFF; font-size: 26px; font-weight: 800; margin: 0 0 4px 0; }
-.header-left p  { color: #A8C4E0; font-size: 12px; margin: 0; }
-.header-badge {
-    background: #1E88E5; color: white; padding: 10px 20px;
-    border-radius: 8px; font-size: 13px; font-weight: 600; text-align: right;
-}
-.header-badge span { display: block; font-size: 10px; opacity: 0.85; margin-bottom: 2px; }
-.kpi-card {
-    background: white; border-radius: 10px; padding: 16px 18px;
-    border-left: 4px solid #1E88E5; box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-}
-.kpi-label {
-    font-size: 10px; font-weight: 600; color: #1E88E5; text-transform: uppercase;
-    background: #EBF5FB; display: inline-block; padding: 2px 8px;
-    border-radius: 4px; margin-bottom: 6px;
-}
-.kpi-title { font-size: 12px; color: #5A6A7A; margin-bottom: 4px; font-weight: 500; }
-.kpi-value { font-size: 24px; font-weight: 800; color: #0D1B2A; margin-bottom: 2px; }
-.kpi-sub   { font-size: 10px; color: #8A9BAB; }
-.section-card {
-    background: white; border-radius: 12px; padding: 18px 20px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 14px;
-}
-.section-title { font-size: 14px; font-weight: 700; color: #0D1B2A; margin-bottom: 2px; }
-.section-sub   { font-size: 11px; color: #8A9BAB; margin-bottom: 10px; }
-.data-note {
-    background: #FFF8E1; border-left: 4px solid #FFC107; border-radius: 6px;
-    padding: 10px 16px; font-size: 12px; color: #795548; margin-bottom: 16px;
-}
-.highlight-item {
-    display: flex; align-items: flex-start; gap: 8px;
-    margin-bottom: 10px; font-size: 12px; color: #2C3E50; line-height: 1.5;
-}
-.highlight-dot {
-    width: 7px; height: 7px; border-radius: 50%;
-    background: #1E88E5; margin-top: 4px; flex-shrink: 0;
-}
-.footer {
-    text-align: center; font-size: 11px; color: #AAB8C2;
-    padding: 16px 0 8px; border-top: 1px solid #E8EDF2; margin-top: 8px;
-}
-#MainMenu, footer, header { visibility: hidden; }
-.block-container { padding-top: 20px !important; padding-bottom: 12px !important; }
+    @import url('https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600;700&display=swap');
+
+    /* Global */
+    .block-container { padding-top: 1rem; padding-bottom: 1rem; max-width: 1400px; }
+    html, body, [class*="css"] { font-family: 'Source Sans Pro', sans-serif; }
+
+    /* Header banner */
+    .header-banner {
+        background: linear-gradient(135deg, #1B2A3D 0%, #263B50 100%);
+        padding: 1.5rem 2rem;
+        border-radius: 12px;
+        margin-bottom: 1.2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    .header-title { color: #FFFFFF; font-size: 1.85rem; font-weight: 700; margin: 0; line-height: 1.2; }
+    .header-subtitle { color: #A8B8C8; font-size: 0.85rem; margin-top: 4px; }
+    .header-badge {
+        background: rgba(255,255,255,0.12);
+        border: 1px solid rgba(255,255,255,0.25);
+        color: #7FDBCA;
+        padding: 8px 18px;
+        border-radius: 8px;
+        font-size: 0.82rem;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    /* KPI cards */
+    .kpi-card {
+        background: #FFFFFF;
+        border: 1px solid #E2E8F0;
+        border-radius: 10px;
+        padding: 1rem 1.1rem;
+        height: 100%;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        transition: box-shadow 0.2s;
+    }
+    .kpi-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .kpi-label-tag {
+        display: inline-block;
+        background: #1B2A3D;
+        color: #FFFFFF;
+        font-size: 0.6rem;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 4px;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        margin-bottom: 6px;
+    }
+    .kpi-name { color: #475569; font-size: 0.78rem; font-weight: 600; margin-bottom: 4px; }
+    .kpi-value { color: #1B2A3D; font-size: 1.65rem; font-weight: 700; line-height: 1.15; }
+    .kpi-detail { color: #94A3B8; font-size: 0.68rem; margin-top: 3px; }
+
+    /* Section cards */
+    .section-card {
+        background: #FFFFFF;
+        border: 1px solid #E2E8F0;
+        border-radius: 10px;
+        padding: 1.2rem 1.3rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        margin-bottom: 1rem;
+        height: 100%;
+    }
+    .section-title { color: #1B2A3D; font-size: 1.05rem; font-weight: 700; margin-bottom: 2px; }
+    .section-subtitle { color: #94A3B8; font-size: 0.75rem; margin-bottom: 0.8rem; }
+
+    /* Strategic highlights */
+    .highlight-item {
+        padding: 8px 0;
+        border-bottom: 1px solid #F1F5F9;
+        color: #334155;
+        font-size: 0.82rem;
+        line-height: 1.45;
+    }
+    .highlight-item:last-child { border-bottom: none; }
+    .highlight-bullet { color: #1B6B5A; font-weight: 700; margin-right: 6px; }
+
+    /* Footer */
+    .footer-text { color: #94A3B8; font-size: 0.7rem; text-align: center; margin-top: 1.5rem; padding: 1rem; border-top: 1px solid #E2E8F0; }
+
+    /* Hide Streamlit defaults */
+    #MainMenu {visibility: hidden;}
+    header {visibility: hidden;}
+    footer {visibility: hidden;}
+    .stDeployButton {display: none;}
 </style>
 """, unsafe_allow_html=True)
 
-# ── Data ──────────────────────────────────────────────────────────────────────
-YEARS = [2020, 2021, 2022, 2023, 2024]
-sk_scope1   = [2545, 2500, 2541, 2415, 2473]
-sk_scope2   = [566,  553,  508,  467,  479]
-sk_scope12  = [s1+s2 for s1, s2 in zip(sk_scope1, sk_scope2)]
-sk_water    = [144.3, 140.1, 141.1, 131.7, 128.9]
-sk_landfill = [442038, 426106, 452757, 370935, 313508]
-sk_recovery = [405801, 475022, 488476, 478944, 516174]
-sk_other    = [9022,  14129,  14566,  17336,  23786]
-sk_certwood = [57.3, 56.2, 56.9, 56.8, 58.6]
-sk_recycled = [75.4, 75.6, 76.2, 76.5, 76.4]
-wrk_scope3_labels = ["Cat 1\nPurch. Goods","Cat 3\nFuel & Energy","Cat 10\nProcessing","Cat 12\nEnd-of-Life","Cat 9\nTransport"]
-wrk_scope3_vals   = [2333, 2131, 444, 3172, 116]
-mat_topics = [
-    ("Climate Change",10.2,10.0,220),("Waste & Circular Econ.",10.0,9.1,180),
-    ("Forest (Sust. Sourcing)",9.5,9.2,160),("Supply Chain Sust.",8.5,9.0,140),
-    ("Water Management",8.2,8.5,120),("Energy Efficiency",9.0,8.4,120),
-    ("Community Engagement",7.2,8.0,100),("Health & Safety",9.2,7.2,100),
-    ("Biodiversity",7.0,7.0,90),
-]
-C = dict(navy="#0D1B2A",blue="#1E88E5",teal="#00ACC1",green="#43A047",amber="#FFA000",red="#E53935")
+# ── DATA ─────────────────────────────────────────────────────────────────────
+# Smurfit Kappa legacy trend data (2020-2024)
+sk_trend = pd.DataFrame({
+    "Year": [2020, 2021, 2022, 2023, 2024],
+    "Scope 1 (ktonnes CO₂)": [2545, 2500, 2541, 2415, 2473],
+    "Scope 2 (ktonnes CO₂)": [566, 553, 508, 467, 479],
+    "Water Withdrawal (Mm³)": [144.3, 140.1, 141.1, 131.7, 128.9],
+    "Landfill Waste (tonnes)": [442038, 426106, 452757, 370935, 313508],
+    "Recovered Waste (tonnes)": [405801, 475022, 488476, 478944, 516174],
+    "Other Waste (tonnes)": [9022, 14129, 14566, 17336, 23786],
+    "Certified Wood (%)": [57.3, 56.2, 56.9, 56.8, 58.6],
+    "Recycled Fiber (%)": [75.4, 75.6, 76.2, 76.5, 76.4],
+})
+sk_trend["Scope 1+2"] = sk_trend["Scope 1 (ktonnes CO₂)"] + sk_trend["Scope 2 (ktonnes CO₂)"]
+sk_trend["Total Waste"] = sk_trend["Landfill Waste (tonnes)"] + sk_trend["Recovered Waste (tonnes)"] + sk_trend["Other Waste (tonnes)"]
+sk_trend["Recovery Rate (%)"] = (sk_trend["Recovered Waste (tonnes)"] / sk_trend["Total Waste"] * 100).round(1)
 
-def fig_style(fig, ax):
-    fig.patch.set_facecolor("white"); ax.set_facecolor("white")
-    ax.spines[["top","right"]].set_visible(False)
-    ax.spines[["left","bottom"]].set_color("#E0E6EE")
-    ax.tick_params(colors="#8A9BAB", labelsize=8)
-    ax.yaxis.label.set_color("#8A9BAB"); ax.yaxis.label.set_size(8)
-    ax.grid(axis="y", color="#F0F4F8", linewidth=0.8)
+# WestRock 2024 snapshot data
+wrk_2024 = {
+    "Scope 1+2 (ktonnes CO₂e)": 7974,
+    "GHG Intensity (tCO₂e/ton)": 0.55,
+    "Scope 3 Total (ktonnes CO₂e)": 9452,
+    "Recycled Input (%)": 40,
+    "Renewable Energy (%)": 60,
+    "Water Withdrawal (ML)": 470201,
+    "Water Intensity (ML/ton)": 0.036,
+}
 
-# ── Header ────────────────────────────────────────────────────────────────────
+# WestRock Scope 3 breakdown
+wrk_scope3 = pd.DataFrame({
+    "Category": [
+        "Cat 1 – Purchased goods & services",
+        "Cat 3 – Fuel & energy activities",
+        "Cat 9 – Downstream transport",
+        "Cat 10 – Processing of sold products",
+        "Cat 12 – End-of-life treatment",
+    ],
+    "Emissions (ktonnes CO₂e)": [2333, 2131, 116, 444, 3172],
+})
+
+# Materiality matrix
+materiality = pd.DataFrame({
+    "Topic": [
+        "Climate Change", "Circular Economy", "Sustainable Forestry",
+        "Water Management", "Energy Efficiency", "Pollution",
+        "Biodiversity", "Supply Chain Sustainability",
+    ],
+    "Business Impact": [10.0, 9.5, 9.0, 8.2, 8.8, 7.5, 7.0, 8.5],
+    "Stakeholder Importance": [10.2, 9.4, 9.0, 8.2, 8.0, 7.8, 7.2, 8.8],
+})
+
+# ── HEADER ───────────────────────────────────────────────────────────────────
 st.markdown("""
-<div class="dashboard-header">
-  <div class="header-left">
-    <h1>🌿 Smurfit Westrock ESG Performance Dashboard</h1>
-    <p>Environmental metrics, material issues, and progress toward targets &nbsp;|&nbsp; Legacy-company data, 2024 focus</p>
-  </div>
-  <div class="header-badge"><span>2024 FOCUS</span>Merger Transition</div>
-</div>""", unsafe_allow_html=True)
+<div class="header-banner">
+    <div>
+        <div class="header-title">Smurfit Westrock ESG Performance Dashboard</div>
+        <div class="header-subtitle">Environmental metrics, material issues, and progress toward targets · Dashboard based on 2024 sustainability disclosures</div>
+    </div>
+    <div class="header-badge">2024 Focus · Legacy Data · Status: Disclosure Transition</div>
+</div>
+""", unsafe_allow_html=True)
 
-st.markdown("""
-<div class="data-note">
-  ⚠️ <strong>Merger context:</strong> Smurfit WestRock was formed mid-2024.
-  Trend data is <em>legacy Smurfit Kappa (SK)</em>; 2024 snapshot KPIs for WestRock (WRK) reported separately.
-  Consolidated targets still in development as of 2025.
-</div>""", unsafe_allow_html=True)
+# ── KPI ROW ──────────────────────────────────────────────────────────────────
+def kpi_card(name, value, detail):
+    return f"""
+    <div class="kpi-card">
+        <div class="kpi-label-tag">KPI</div>
+        <div class="kpi-name">{name}</div>
+        <div class="kpi-value">{value}</div>
+        <div class="kpi-detail">{detail}</div>
+    </div>"""
 
-# ── KPI Row ───────────────────────────────────────────────────────────────────
+latest = sk_trend[sk_trend["Year"] == 2024].iloc[0]
+prev = sk_trend[sk_trend["Year"] == 2023].iloc[0]
+scope12_yoy = ((latest["Scope 1+2"] - prev["Scope 1+2"]) / prev["Scope 1+2"] * 100)
+water_yoy = ((latest["Water Withdrawal (Mm³)"] - prev["Water Withdrawal (Mm³)"]) / prev["Water Withdrawal (Mm³)"] * 100)
+
+cols = st.columns(6)
 kpis = [
-    ("SK Scope 1 (2024)",   "2,473 kt CO₂",  "Climate",      "YoY: −2.8% | Trend: ↓ since 2021"),
-    ("SK Scope 1+2 (2024)", "2,952 kt CO₂",  "Climate",      "Combined; legacy Smurfit Kappa"),
-    ("WRK Scope 1+2",       "7,974 kt CO₂e", "Climate",      "Legacy WestRock 2024 assured"),
-    ("SK Water (2024)",     "128.9 Mm³",      "Water",        "YoY: −2.1% | Best in 5-yr series"),
-    ("SK Cert. Wood",       "58.6%",          "Forest/Fiber", "YoY: +1.8pp | 5-yr high"),
-    ("WRK Renewable Mix",   "60%",            "Energy",       "Legacy WestRock 2024 energy"),
+    ("SK Scope 1+2 Combined", f"{latest['Scope 1+2']:,.0f} kt CO₂",
+     f"YoY: {scope12_yoy:+.1f}% · Legacy Smurfit Kappa"),
+    ("WRK Scope 1+2 (MBM)", f"{wrk_2024['Scope 1+2 (ktonnes CO₂e)']:,.0f} kt CO₂e",
+     f"Intensity: {wrk_2024['GHG Intensity (tCO₂e/ton)']} tCO₂e/ton · Legacy WestRock"),
+    ("WRK Renewable Energy", f"{wrk_2024['Renewable Energy (%)']}%",
+     f"Non-renewable: {100 - wrk_2024['Renewable Energy (%)']}% · Legacy WestRock"),
+    ("SK Recycled Fiber", f"{latest['Recycled Fiber (%)']}%",
+     f"Certified wood: {latest['Certified Wood (%)']}% · Legacy SK"),
+    ("SK Water Withdrawal", f"{latest['Water Withdrawal (Mm³)']} Mm³",
+     f"YoY: {water_yoy:+.1f}% · Legacy Smurfit Kappa"),
+    ("SK Waste Recovery Rate", f"{latest['Recovery Rate (%)']:.1f}%",
+     f"Recovery: {latest['Recovered Waste (tonnes)']:,.0f}t · Legacy SK"),
 ]
-for col, (title, value, label, sub) in zip(st.columns(6), kpis):
-    with col:
-        st.markdown(f"""<div class="kpi-card">
-          <div class="kpi-label">{label}</div>
-          <div class="kpi-title">{title}</div>
-          <div class="kpi-value">{value}</div>
-          <div class="kpi-sub">{sub}</div>
-        </div>""", unsafe_allow_html=True)
+for i, (name, value, detail) in enumerate(kpis):
+    with cols[i]:
+        st.markdown(kpi_card(name, value, detail), unsafe_allow_html=True)
 
-st.markdown("<br>", unsafe_allow_html=True)
+st.markdown("<div style='height: 0.8rem'></div>", unsafe_allow_html=True)
 
-# ── Row 1: GHG Trend + Materiality ───────────────────────────────────────────
-col_ghg, col_mat = st.columns([1.1, 0.9])
+# ── ROW 2: Climate + Materiality ─────────────────────────────────────────────
+col_left, col_right = st.columns(2)
 
-with col_ghg:
-    st.markdown('<div class="section-card">', unsafe_allow_html=True)
-    st.markdown('<div class="section-title">📈 Climate Progress — Scope 1 & 2 Trend (SK Legacy, 2020–2024)</div>', unsafe_allow_html=True)
-    st.markdown('<div class="section-sub">Legacy Smurfit Kappa direct and indirect emissions</div>', unsafe_allow_html=True)
-    fig, ax = plt.subplots(figsize=(7, 3))
-    ax.plot(YEARS, sk_scope1,  marker="o", color=C["blue"],  lw=2, ms=6, label="Scope 1")
-    ax.plot(YEARS, sk_scope2,  marker="o", color=C["green"], lw=2, ms=6, label="Scope 2")
-    ax.plot(YEARS, sk_scope12, marker="o", color=C["red"],   lw=2, ms=6, label="Scope 1+2", ls="--")
-    ax.set_ylabel("ktonnes CO₂"); ax.set_xticks(YEARS)
-    ax.legend(fontsize=8, frameon=False)
-    fig_style(fig, ax); plt.tight_layout()
-    st.pyplot(fig, use_container_width=True); plt.close(fig)
-    st.markdown('</div>', unsafe_allow_html=True)
+with col_left:
+    st.markdown("""
+    <div class="section-card" style="padding-bottom:0.2rem">
+        <div class="section-title">Climate Progress — Smurfit Kappa Legacy</div>
+        <div class="section-subtitle">Scope 1, Scope 2, and combined emissions trend (2020–2024) in ktonnes CO₂</div>
+    </div>""", unsafe_allow_html=True)
 
-with col_mat:
-    st.markdown('<div class="section-card">', unsafe_allow_html=True)
-    st.markdown('<div class="section-title">🎯 Materiality Matrix</div>', unsafe_allow_html=True)
-    st.markdown('<div class="section-sub">Business impact vs. stakeholder importance</div>', unsafe_allow_html=True)
-    fig, ax = plt.subplots(figsize=(5.5, 3))
-    for name, biz, stake, sz in mat_topics:
-        ax.scatter(biz, stake, s=sz, color=C["blue"], alpha=0.65, zorder=3)
-        ax.annotate(name, (biz, stake), fontsize=6.2, color="#2C3E50",
-                    xytext=(4,4), textcoords="offset points")
-    ax.axhline(8.5, color="#CCCCCC", ls="--", lw=0.8)
-    ax.axvline(8.5, color="#CCCCCC", ls="--", lw=0.8)
-    ax.set_xlabel("Business Impact", fontsize=8, color="#8A9BAB")
-    ax.set_ylabel("Stakeholder Importance", fontsize=8, color="#8A9BAB")
-    ax.set_xlim(6.2, 11); ax.set_ylim(6.2, 11)
-    fig_style(fig, ax); plt.tight_layout()
-    st.pyplot(fig, use_container_width=True); plt.close(fig)
-    st.markdown('</div>', unsafe_allow_html=True)
+    fig_climate = go.Figure()
+    fig_climate.add_trace(go.Scatter(
+        x=sk_trend["Year"], y=sk_trend["Scope 1 (ktonnes CO₂)"],
+        name="Scope 1", mode="lines+markers",
+        line=dict(color="#2563EB", width=2.5), marker=dict(size=7),
+    ))
+    fig_climate.add_trace(go.Scatter(
+        x=sk_trend["Year"], y=sk_trend["Scope 2 (ktonnes CO₂)"],
+        name="Scope 2", mode="lines+markers",
+        line=dict(color="#F59E0B", width=2.5), marker=dict(size=7),
+    ))
+    fig_climate.add_trace(go.Scatter(
+        x=sk_trend["Year"], y=sk_trend["Scope 1+2"],
+        name="Scope 1+2", mode="lines+markers",
+        line=dict(color="#DC2626", width=2.5, dash="dot"), marker=dict(size=7),
+    ))
+    fig_climate.update_layout(
+        height=340, margin=dict(l=50, r=20, t=30, b=40),
+        plot_bgcolor="#FAFBFC", paper_bgcolor="#FFFFFF",
+        legend=dict(orientation="h", y=1.12, x=0.5, xanchor="center", font=dict(size=11)),
+        xaxis=dict(title="Year", dtick=1, gridcolor="#F1F5F9"),
+        yaxis=dict(title="ktonnes CO₂", gridcolor="#F1F5F9"),
+        font=dict(family="Source Sans Pro", size=12),
+    )
+    st.plotly_chart(fig_climate, use_container_width=True)
 
-# ── Row 2: Water, Waste, Scope 3, Highlights ─────────────────────────────────
-col_w, col_ws, col_s3, col_hi = st.columns([0.85, 1.1, 1.05, 0.95])
+with col_right:
+    st.markdown("""
+    <div class="section-card" style="padding-bottom:0.2rem">
+        <div class="section-title">Materiality Matrix</div>
+        <div class="section-subtitle">Topics with the highest business impact and stakeholder importance</div>
+    </div>""", unsafe_allow_html=True)
+
+    fig_mat = go.Figure()
+    fig_mat.add_trace(go.Scatter(
+        x=materiality["Business Impact"],
+        y=materiality["Stakeholder Importance"],
+        mode="markers+text",
+        text=materiality["Topic"],
+        textposition="top center",
+        textfont=dict(size=9.5, color="#475569"),
+        marker=dict(
+            size=18, color="#2B7A6F", opacity=0.75,
+            line=dict(color="#1B6B5A", width=1.5),
+        ),
+    ))
+    fig_mat.update_layout(
+        height=340, margin=dict(l=50, r=20, t=30, b=40),
+        plot_bgcolor="#FAFBFC", paper_bgcolor="#FFFFFF",
+        xaxis=dict(title="Business Impact", range=[6.5, 10.8], gridcolor="#F1F5F9"),
+        yaxis=dict(title="Stakeholder Importance", range=[6.5, 10.8], gridcolor="#F1F5F9"),
+        font=dict(family="Source Sans Pro", size=12),
+        showlegend=False,
+    )
+    st.plotly_chart(fig_mat, use_container_width=True)
+
+# ── ROW 3: Scope 3 Hotspots + Circularity + Strategic Highlights ────────────
+col_a, col_b, col_c = st.columns(3)
+
+with col_a:
+    st.markdown("""
+    <div class="section-card" style="padding-bottom:0.2rem">
+        <div class="section-title">WestRock Scope 3 Hotspots (2024)</div>
+        <div class="section-subtitle">Largest value-chain emission categories in ktonnes CO₂e</div>
+    </div>""", unsafe_allow_html=True)
+
+    fig_s3 = go.Figure()
+    fig_s3.add_trace(go.Bar(
+        y=wrk_scope3["Category"],
+        x=wrk_scope3["Emissions (ktonnes CO₂e)"],
+        orientation="h",
+        marker_color=["#2563EB", "#3B82F6", "#93C5FD", "#60A5FA", "#1D4ED8"],
+        text=wrk_scope3["Emissions (ktonnes CO₂e)"].apply(lambda v: f"{v:,.0f}"),
+        textposition="outside",
+        textfont=dict(size=11),
+    ))
+    fig_s3.update_layout(
+        height=340, margin=dict(l=10, r=60, t=20, b=30),
+        plot_bgcolor="#FAFBFC", paper_bgcolor="#FFFFFF",
+        xaxis=dict(title="ktonnes CO₂e", gridcolor="#F1F5F9"),
+        yaxis=dict(autorange="reversed"),
+        font=dict(family="Source Sans Pro", size=11),
+        showlegend=False,
+    )
+    st.plotly_chart(fig_s3, use_container_width=True)
+
+with col_b:
+    st.markdown("""
+    <div class="section-card" style="padding-bottom:0.2rem">
+        <div class="section-title">Circularity & Waste — SK Legacy</div>
+        <div class="section-subtitle">Waste pathways: landfill, recovery, and other (2020–2024)</div>
+    </div>""", unsafe_allow_html=True)
+
+    fig_waste = go.Figure()
+    fig_waste.add_trace(go.Bar(
+        x=sk_trend["Year"], y=sk_trend["Landfill Waste (tonnes)"] / 1000,
+        name="Landfill", marker_color="#DC2626",
+    ))
+    fig_waste.add_trace(go.Bar(
+        x=sk_trend["Year"], y=sk_trend["Recovered Waste (tonnes)"] / 1000,
+        name="Recovery", marker_color="#2B7A6F",
+    ))
+    fig_waste.add_trace(go.Bar(
+        x=sk_trend["Year"], y=sk_trend["Other Waste (tonnes)"] / 1000,
+        name="Other", marker_color="#F59E0B",
+    ))
+    fig_waste.update_layout(
+        barmode="stack", height=340,
+        margin=dict(l=50, r=20, t=20, b=40),
+        plot_bgcolor="#FAFBFC", paper_bgcolor="#FFFFFF",
+        legend=dict(orientation="h", y=1.12, x=0.5, xanchor="center", font=dict(size=11)),
+        xaxis=dict(title="Year", dtick=1, gridcolor="#F1F5F9"),
+        yaxis=dict(title="Thousand tonnes", gridcolor="#F1F5F9"),
+        font=dict(family="Source Sans Pro", size=12),
+    )
+    st.plotly_chart(fig_waste, use_container_width=True)
+
+with col_c:
+    st.markdown("""<div class="section-card">
+        <div class="section-title">Strategic Highlights</div>
+        <div class="section-subtitle">Key signals from the 2024 legacy datasets</div>
+    """, unsafe_allow_html=True)
+
+    highlights = [
+        f"SK Scope 1+2 emissions were <b>{latest['Scope 1+2']:,.0f} ktonnes</b> in 2024, "
+        f"a {scope12_yoy:+.1f}% change YoY. Scope 2 fell 15% since 2020.",
+        f"WestRock Scope 3 totalled <b>9,452 ktonnes CO₂e</b>; end-of-life treatment "
+        f"is the largest category at 3,172 kt.",
+        f"SK water withdrawal dropped to <b>{latest['Water Withdrawal (Mm³)']} Mm³</b>, "
+        f"down 10.7% vs 2020, showing consistent improvement.",
+        f"Waste recovery reached <b>{latest['Recovered Waste (tonnes)']:,.0f} tonnes</b> "
+        f"({latest['Recovery Rate (%)']:.1f}% recovery rate), up from 47.4% in 2020.",
+        f"Certified wood share rose to <b>{latest['Certified Wood (%)']}%</b> in 2024, "
+        f"the highest since 2020, supporting forestry materiality.",
+        f"WestRock energy mix is <b>60% renewable</b>; recycled input materials at 40%.",
+        "⚠️ 2024 data is still primarily <b>legacy-company based</b> — consolidated "
+        "targets are being developed in 2025.",
+    ]
+    for h in highlights:
+        st.markdown(
+            f'<div class="highlight-item"><span class="highlight-bullet">●</span> {h}</div>',
+            unsafe_allow_html=True,
+        )
+    st.markdown("</div>", unsafe_allow_html=True)
+
+# ── ROW 4: Water trend + Forest/Fiber KPIs ───────────────────────────────────
+col_w, col_f = st.columns(2)
 
 with col_w:
-    st.markdown('<div class="section-card">', unsafe_allow_html=True)
-    st.markdown('<div class="section-title">💧 Water Withdrawal</div>', unsafe_allow_html=True)
-    st.markdown('<div class="section-sub">SK Legacy 2020–2024 (Mm³)</div>', unsafe_allow_html=True)
-    fig, ax = plt.subplots(figsize=(3.5, 2.6))
-    ax.plot(YEARS, sk_water, marker="o", color=C["teal"], lw=2, ms=6)
-    ax.fill_between(YEARS, sk_water, alpha=0.08, color=C["teal"])
-    for x, y in zip(YEARS, sk_water):
-        ax.annotate(f"{y}", (x, y), textcoords="offset points", xytext=(0,6),
-                    ha="center", fontsize=7, color="#5A6A7A")
-    ax.set_ylabel("Mm³"); ax.set_xticks(YEARS); ax.set_ylim(120, 152)
-    fig_style(fig, ax); plt.tight_layout()
-    st.pyplot(fig, use_container_width=True); plt.close(fig)
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown("""
+    <div class="section-card" style="padding-bottom:0.2rem">
+        <div class="section-title">Water Withdrawal Trend — SK Legacy</div>
+        <div class="section-subtitle">Total water withdrawal in million m³ (2020–2024)</div>
+    </div>""", unsafe_allow_html=True)
 
-with col_ws:
-    st.markdown('<div class="section-card">', unsafe_allow_html=True)
-    st.markdown('<div class="section-title">♻️ Waste Pathways</div>', unsafe_allow_html=True)
-    st.markdown('<div class="section-sub">SK Legacy non-hazardous waste (tonnes)</div>', unsafe_allow_html=True)
-    fig, ax = plt.subplots(figsize=(4.5, 2.6))
-    x = np.arange(len(YEARS)); w = 0.55
-    rec = np.array(sk_recovery); lan = np.array(sk_landfill); oth = np.array(sk_other)
-    ax.bar(x, rec, w, label="Recovery", color=C["green"], alpha=0.85)
-    ax.bar(x, lan, w, bottom=rec, label="Landfill", color=C["red"], alpha=0.75)
-    ax.bar(x, oth, w, bottom=rec+lan, label="Other", color=C["amber"], alpha=0.75)
-    ax.set_xticks(x); ax.set_xticklabels(YEARS)
-    ax.legend(fontsize=7, frameon=False, ncol=3)
-    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda v,_: f"{v/1e3:.0f}k"))
-    fig_style(fig, ax); plt.tight_layout()
-    st.pyplot(fig, use_container_width=True); plt.close(fig)
-    st.markdown('</div>', unsafe_allow_html=True)
+    fig_water = go.Figure()
+    fig_water.add_trace(go.Scatter(
+        x=sk_trend["Year"], y=sk_trend["Water Withdrawal (Mm³)"],
+        mode="lines+markers+text",
+        text=sk_trend["Water Withdrawal (Mm³)"].apply(lambda v: f"{v:.1f}"),
+        textposition="top center", textfont=dict(size=11, color="#2563EB"),
+        line=dict(color="#2563EB", width=2.5), marker=dict(size=8, color="#2563EB"),
+        fill="tozeroy", fillcolor="rgba(37,99,235,0.08)",
+    ))
+    fig_water.update_layout(
+        height=300, margin=dict(l=50, r=20, t=20, b=40),
+        plot_bgcolor="#FAFBFC", paper_bgcolor="#FFFFFF",
+        xaxis=dict(title="Year", dtick=1, gridcolor="#F1F5F9"),
+        yaxis=dict(title="Mm³", range=[120, 150], gridcolor="#F1F5F9"),
+        font=dict(family="Source Sans Pro", size=12),
+        showlegend=False,
+    )
+    st.plotly_chart(fig_water, use_container_width=True)
 
-with col_s3:
-    st.markdown('<div class="section-card">', unsafe_allow_html=True)
-    st.markdown('<div class="section-title">🔗 WestRock Scope 3 Hotspots</div>', unsafe_allow_html=True)
-    st.markdown('<div class="section-sub">2024 value-chain emissions (kt CO₂e)</div>', unsafe_allow_html=True)
-    fig, ax = plt.subplots(figsize=(4.5, 2.6))
-    bar_colors = [C["blue"], C["teal"], C["green"], C["red"], C["amber"]]
-    bars = ax.barh(wrk_scope3_labels, wrk_scope3_vals, color=bar_colors, alpha=0.85)
-    for bar, val in zip(bars, wrk_scope3_vals):
-        ax.text(bar.get_width()+40, bar.get_y()+bar.get_height()/2,
-                f"{val:,}", va="center", fontsize=7.5, color="#5A6A7A")
-    ax.set_xlabel("kt CO₂e", fontsize=8, color="#8A9BAB")
-    ax.invert_yaxis()
-    ax.spines[["top","right","left"]].set_visible(False)
-    ax.spines["bottom"].set_color("#E0E6EE")
-    ax.tick_params(colors="#8A9BAB", labelsize=8)
-    ax.grid(axis="x", color="#F0F4F8", lw=0.8)
-    fig.patch.set_facecolor("white"); ax.set_facecolor("white")
-    plt.tight_layout()
-    st.pyplot(fig, use_container_width=True); plt.close(fig)
-    st.markdown('</div>', unsafe_allow_html=True)
+with col_f:
+    st.markdown("""
+    <div class="section-card" style="padding-bottom:0.2rem">
+        <div class="section-title">Forest & Fiber Metrics — SK Legacy</div>
+        <div class="section-subtitle">Certified wood sourcing and recycled fiber share (2020–2024)</div>
+    </div>""", unsafe_allow_html=True)
 
-with col_hi:
-    st.markdown('<div class="section-card">', unsafe_allow_html=True)
-    st.markdown('<div class="section-title">⭐ Strategic Highlights</div>', unsafe_allow_html=True)
-    st.markdown('<div class="section-sub">Best-performing signals, 2024</div>', unsafe_allow_html=True)
-    for h in [
-        "SK water withdrawal fell <strong>10.7%</strong> since 2020 — best 5-year result.",
-        "SK landfill waste down <strong>29%</strong> since 2022; recovery hit 516k tonnes.",
-        "SK certified wood at <strong>58.6%</strong>, highest on record.",
-        "WRK renewable energy mix at <strong>60%</strong> of total portfolio.",
-        "WRK Scope 3 led by <strong>end-of-life</strong> (Cat 12: 3,172 kt) — a circularity lever.",
-        "SK recycled fiber at <strong>76.4%</strong> — consistently high over 5 years.",
-    ]:
-        st.markdown(f'<div class="highlight-item"><div class="highlight-dot"></div><div>{h}</div></div>',
-                    unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
+    fig_fiber = go.Figure()
+    fig_fiber.add_trace(go.Scatter(
+        x=sk_trend["Year"], y=sk_trend["Certified Wood (%)"],
+        name="Certified Wood (%)", mode="lines+markers",
+        line=dict(color="#2B7A6F", width=2.5), marker=dict(size=7),
+    ))
+    fig_fiber.add_trace(go.Scatter(
+        x=sk_trend["Year"], y=sk_trend["Recycled Fiber (%)"],
+        name="Recycled Fiber (%)", mode="lines+markers",
+        line=dict(color="#F59E0B", width=2.5), marker=dict(size=7),
+    ))
+    fig_fiber.update_layout(
+        height=300, margin=dict(l=50, r=20, t=20, b=40),
+        plot_bgcolor="#FAFBFC", paper_bgcolor="#FFFFFF",
+        legend=dict(orientation="h", y=1.12, x=0.5, xanchor="center", font=dict(size=11)),
+        xaxis=dict(title="Year", dtick=1, gridcolor="#F1F5F9"),
+        yaxis=dict(title="%", range=[50, 80], gridcolor="#F1F5F9"),
+        font=dict(family="Source Sans Pro", size=12),
+        showlegend=True,
+    )
+    st.plotly_chart(fig_fiber, use_container_width=True)
 
-# ── Row 3: Forest/Fiber + Energy ──────────────────────────────────────────────
-col_f1, col_f2, col_f3 = st.columns(3)
-
-with col_f1:
-    st.markdown('<div class="section-card">', unsafe_allow_html=True)
-    st.markdown('<div class="section-title">🌲 Certified Wood Sourcing (SK)</div>', unsafe_allow_html=True)
-    st.markdown('<div class="section-sub">% of wood from certified forests</div>', unsafe_allow_html=True)
-    fig, ax = plt.subplots(figsize=(4, 2.2))
-    ax.plot(YEARS, sk_certwood, marker="o", color=C["green"], lw=2, ms=6)
-    ax.fill_between(YEARS, sk_certwood, 54, alpha=0.08, color=C["green"])
-    ax.set_ylim(54, 62); ax.set_xticks(YEARS); ax.set_ylabel("%")
-    fig_style(fig, ax); plt.tight_layout()
-    st.pyplot(fig, use_container_width=True); plt.close(fig)
-    st.markdown('</div>', unsafe_allow_html=True)
-
-with col_f2:
-    st.markdown('<div class="section-card">', unsafe_allow_html=True)
-    st.markdown('<div class="section-title">📦 Recycled Fiber in Production (SK)</div>', unsafe_allow_html=True)
-    st.markdown('<div class="section-sub">% recycled fiber in global production</div>', unsafe_allow_html=True)
-    fig, ax = plt.subplots(figsize=(4, 2.2))
-    ax.plot(YEARS, sk_recycled, marker="o", color=C["blue"], lw=2, ms=6)
-    ax.fill_between(YEARS, sk_recycled, 73, alpha=0.08, color=C["blue"])
-    ax.set_ylim(73, 79); ax.set_xticks(YEARS); ax.set_ylabel("%")
-    fig_style(fig, ax); plt.tight_layout()
-    st.pyplot(fig, use_container_width=True); plt.close(fig)
-    st.markdown('</div>', unsafe_allow_html=True)
-
-with col_f3:
-    st.markdown('<div class="section-card">', unsafe_allow_html=True)
-    st.markdown('<div class="section-title">⚡ WestRock Energy Mix (2024)</div>', unsafe_allow_html=True)
-    st.markdown('<div class="section-sub">Renewable vs. non-renewable (legacy WRK)</div>', unsafe_allow_html=True)
-    fig, ax = plt.subplots(figsize=(4, 2.2))
-    ax.pie([60,40], labels=["Renewable\n60%","Non-Renewable\n40%"],
-           colors=[C["green"],"#ECEFF1"], startangle=90,
-           wedgeprops=dict(width=0.5), textprops=dict(fontsize=8, color="#5A6A7A"))
-    ax.text(0,0,"60%\nRenewable", ha="center", va="center",
-            fontsize=10, fontweight="bold", color=C["navy"])
-    fig.patch.set_facecolor("white"); plt.tight_layout()
-    st.pyplot(fig, use_container_width=True); plt.close(fig)
-    st.markdown('</div>', unsafe_allow_html=True)
-
+# ── FOOTER ───────────────────────────────────────────────────────────────────
 st.markdown("""
-<div class="footer">
-  Data sources: Smurfit WestRock 2024 Sustainability Report &nbsp;|&nbsp;
-  Supporting Data &nbsp;|&nbsp; Supplementary Information &nbsp;|&nbsp; Annual Report &nbsp;|&nbsp; Planet Section<br>
-  Prepared for ESG class presentation. Legacy-company data only; consolidated metrics still in development as of 2025.
-</div>""", unsafe_allow_html=True)
+<div class="footer-text">
+    Prepared from Smurfit Westrock 2024 sustainability disclosures (Supporting Data & Supplementary Information). 
+    Legacy-company data — 2024 reporting is still primarily legacy-company based because the combination closed mid-year. 
+    Consolidated targets and KPIs are still being developed in 2025. | ESC Analytics & Management · Lab 4 Dashboard
+</div>
+""", unsafe_allow_html=True)
